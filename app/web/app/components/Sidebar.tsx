@@ -1,22 +1,11 @@
 "use client";
 
-import { useSession } from "next-auth/react";
+import { useAuth } from "../../lib/auth-provider";
 import { useState, useEffect } from "react";
 import { Eye, EyeClosed } from "lucide-react";
 import { useMutation, useQuery, useLazyQuery } from "@apollo/client/react";
 import { CREATE_SECRET } from "../graphql/mutations";
 import { GET_SECRETS, GET_SECRET_WITH_TOKEN } from "../graphql/queries";
-
-declare module "next-auth" {
-  interface Session {
-    user?: {
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      scopes?: string[];
-    };
-  }
-}
 
 interface TokenData {
   id: string;
@@ -27,7 +16,7 @@ interface TokenData {
 }
 
 export default function Sidebar({ expanded }: { expanded: boolean }) {
-  const { data: session } = useSession();
+  const { user } = useAuth();
   const [secretData, setSecretData] = useState<Record<string, TokenData>>({});
   const [secretName, setSecretName] = useState("");
   const [secretValue, setSecretValue] = useState("");
@@ -62,7 +51,7 @@ export default function Sidebar({ expanded }: { expanded: boolean }) {
   }, [secretsData]);
 
   // Only show for admin or manager
-  const scopes = session?.user?.scopes || [];
+  const scopes = user?.scopes || [];
   const isAdmin = scopes.includes("admin");
   if (!isAdmin && !scopes.includes("manager")) return null;
 

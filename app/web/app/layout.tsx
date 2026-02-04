@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { SessionProviders } from "./providers/session-provider";
+import { AuthProvider } from "../lib/auth-provider";
 import { ApolloProvider } from "./providers/apollo-provider";
 
 const geistSans = Geist({
@@ -30,7 +30,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ApolloProvider>
-          <SessionProviders>{children}</SessionProviders>
+          <AuthProvider>{children}</AuthProvider>
         </ApolloProvider>
       </body>
     </html>

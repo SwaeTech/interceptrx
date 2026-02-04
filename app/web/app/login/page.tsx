@@ -1,38 +1,58 @@
 "use client";
 
-import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "@apollo/client/react";
+import { LOGIN } from "../graphql/mutations";
+import { useAuth } from "../../lib/auth-provider";
+
+interface LoginData {
+  login: {
+    token: string;
+    user: {
+      id: string;
+      email: string;
+      name: string;
+      scopes: string[];
+      orgId: string;
+    };
+  };
+}
+
+interface LoginVariables {
+  email: string;
+  password: string;
+}
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { login } = useAuth();
+
+  const [loginMutation, { loading }] = useMutation<LoginData, LoginVariables>(
+    LOGIN,
+    {
+      onCompleted: (data) => {
+        if (data?.login) {
+          login(data.login.token, data.login.user);
+          router.push("/");
+        }
+      },
+      onError: (error) => {
+        setError("Invalid email or password");
+      },
+    },
+  );
 
   const handleSubmit = async (e: { preventDefault: () => void }) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
 
-    try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
-
-      if (result?.error) {
-        setError("Invalid email or password");
-      } else {
-        router.push("/");
-      }
-    } catch (error) {
-      setError("An error occurred. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
+    await loginMutation({
+      variables: { email, password },
+    });
   };
 
   return (
@@ -93,10 +113,10 @@ export default function LoginPage() {
           <div>
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={loading}
               className="w-full rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? "Signing in..." : "Sign in"}
+              {loading ? "Signing in..." : "Sign in"}
             </button>
           </div>
         </form>

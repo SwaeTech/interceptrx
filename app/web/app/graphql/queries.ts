@@ -1,5 +1,17 @@
 import { gql } from "@apollo/client";
 
+export const ME = gql`
+  query Me {
+    me {
+      id
+      email
+      name
+      scopes
+      orgId
+    }
+  }
+`;
+
 export const GET_SECRETS = gql`
   query GetSecrets {
     secrets {

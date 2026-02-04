@@ -7,8 +7,6 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 import cors from "cors";
 import createError from "http-errors";
-import { getToken } from "next-auth/jwt";
-import { GraphQLError } from "graphql";
 import { ApolloServer } from "@apollo/server";
 import { createServer } from "http";
 import { WebSocketServer } from "ws";
@@ -18,6 +16,7 @@ import { applyMiddleware } from "graphql-middleware";
 import { typeDefs } from "./graphql/type-defs";
 import { resolvers } from "./graphql/resolvers";
 import { permissions } from "./graphql/permissions";
+import { getAuthContext } from "./lib/auth";
 import indexRouter from "./routes/index";
 import usersRouter from "./routes/users";
 import { expressMiddleware } from "@as-integrations/express4";
@@ -74,29 +73,8 @@ await apolloServer.start();
 app.use(
   "/graphql",
   expressMiddleware(apolloServer, {
-    context: async ({ req }) => {
-      const token = await getToken({
-        req,
-        secret: process.env.NEXTAUTH_SECRET,
-      });
-
-      if (!token) {
-        return { user: null };
-      }
-
-      // Extract orgId from scopes (format: "org:org1")
-      const scopes = token.scopes as string[];
-      const orgScope = scopes?.find((scope) => scope.startsWith("org:"));
-      const orgId = orgScope ? orgScope.split(":")[1] : "";
-
-      return {
-        user: {
-          id: token.id as string,
-          email: token.email as string,
-          scopes: scopes,
-          orgId: orgId,
-        },
-      };
+    context: async ({ req, res }) => {
+      return getAuthContext(req, res);
     },
   }),
 );

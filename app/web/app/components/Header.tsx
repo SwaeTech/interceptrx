@@ -1,6 +1,9 @@
 "use client";
 
-import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@apollo/client/react";
+import { useAuth } from "../../lib/auth-provider";
+import { LOGOUT } from "../graphql/mutations";
 
 export default function Header({
   expanded,
@@ -9,7 +12,21 @@ export default function Header({
   expanded: boolean;
   setExpanded: (v: boolean) => void;
 }) {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const [logoutMutation] = useMutation(LOGOUT);
+
+  const handleLogout = async () => {
+    try {
+      await logoutMutation();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      logout();
+      router.push("/login");
+    }
+  };
 
   return (
     <header className="flex items-center justify-between border-b border-gray-200 bg-white px-4 py-3">
@@ -33,13 +50,11 @@ export default function Header({
       <div className="flex items-center">
         <button
           className="text-center ml-4 px-3 py-1 rounded bg-red-500 text-white text-sm hover:bg-red-600 transition mr-3"
-          onClick={() => signOut({ callbackUrl: "/login" })}
+          onClick={handleLogout}
         >
           Logout
         </button>
-        <h1 className="text-gray-900 pr-3">
-          {session?.user?.email ? session.user.email : "Not Signed In"}
-        </h1>
+        <h1 className="text-gray-900 pr-3">{user?.email || "Not Signed In"}</h1>
       </div>
     </header>
   );
