@@ -10,10 +10,13 @@ A secure AI chat application demonstrating multi-level authorization with GraphQ
   - **Mutation-level**: GraphQL Shield rules prevent unauthorized actions
   - **Row-level**: CASL + Prisma filter data by organization and role
   - **Field-level**: Sensitive fields (tokens) restricted to admins only
+- **JWT Authentication**: Secure token-based authentication with HTTP-only cookies and session storage
 - **Envelope Encryption**: Secrets encrypted with AES-256-GCM using per-secret Data Encryption Keys (DEK)
-- **Breach Detection**: SHA-256 pepper hashing creates blind indices to detect leaked tokens in chat messages
+- **Breach Detection & Audit Trail**: SHA-256 pepper hashing creates blind indices to detect leaked tokens, with comprehensive audit logging
+- **Audit Logs**: Complete audit trail of all secret access and breach events, viewable by admins and managers
 - **Real-time Chat**: GraphQL subscriptions with Ollama LLM integration
 - **Organization Isolation**: Multi-tenant data scoping with org-level permissions
+- **Secure User Switching**: Apollo cache cleared on logout to prevent data leakage between users
 
 ## Prerequisites
 
@@ -58,9 +61,8 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/interceptrx?schema=p
 ENVELOPE_MASTER_KEY="your-32-byte-base64-master-key-here"
 PEPPER_HASH="your-secret-pepper-string-here"
 
-# NextAuth
-NEXTAUTH_SECRET="your-nextauth-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
+# JWT Authentication
+JWT_SECRET="your-jwt-secret-here"
 ```
 
 **Generate secure keys:**
@@ -72,15 +74,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 # For PEPPER_HASH (any secure random string)
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
-# For NEXTAUTH_SECRET
+# For JWT_SECRET
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 Create `.env.local` file in `/app/web/` directory:
 
 ```bash
-NEXTAUTH_SECRET="same-as-api-nextauth-secret"
-NEXTAUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_API_BASE_URL="localhost:3001"
 ```
 
 ### 4. Start PostgreSQL Database
@@ -118,12 +119,12 @@ This starts:
 
 All test accounts use password: `password`
 
-| Email               | Role    | Organization | Permissions                                  |
-| ------------------- | ------- | ------------ | -------------------------------------------- |
-| admin1@example.com  | Admin   | org1         | Create/view secrets, view token values       |
-| admin2@example.com  | Admin   | org2         | Create/view secrets (org2 only)              |
-| manager@example.com | Manager | org1         | View secret names/metadata (no token access) |
-| viewer@example.com  | Viewer  | org1         | Chat only (no sidebar access)                |
+| Email               | Role    | Organization | Permissions                                         |
+| ------------------- | ------- | ------------ | --------------------------------------------------- |
+| admin1@example.com  | Admin   | org1         | Create/view secrets, view token values, view audits |
+| admin2@example.com  | Admin   | org2         | Create/view secrets (org2 only), view audits        |
+| manager@example.com | Manager | org1         | View secret names/metadata, view audits (no tokens) |
+| viewer@example.com  | Viewer  | org1         | Chat only (no sidebar/audit access)                 |
 
 ## Testing the Application
 
@@ -144,6 +145,7 @@ Navigate to http://localhost:3000/login and sign in with any demo credential.
 
 - ✅ See sidebar with secrets list
 - ✅ View secret names and breach counts
+- ✅ Click "View Audits" button to see audit logs
 - ❌ Cannot create secrets
 - ❌ No eye icon (cannot view token values)
 
@@ -167,7 +169,7 @@ Navigate to http://localhost:3000/login and sign in with any demo credential.
 
 - You will NOT see "API Key 2"
 
-### 4. Test Breach Detection
+### 4. Test Breach Detection & Audit Logs
 
 **As Admin:**
 
@@ -175,7 +177,11 @@ Navigate to http://localhost:3000/login and sign in with any demo credential.
 2. Copy the exact token value
 3. In chat, send a message containing the token
 4. You'll see a red warning: "⚠️ BREACH DETECTED..."
-5. The secret's breach count increments (red badge appears after refreshing the screen)
+5. The secret's breach count increments (red badge appears)
+6. Click "View Audits" button at bottom of sidebar
+7. You'll see an audit entry with action "BREACH" in red
+8. View token by clicking eye icon - creates "VIEW" audit entry in blue
+9. Audit logs show: action type, timestamp, secret ID, user ID, and details
 
 ### 5. Test Field-Level Permissions
 
@@ -190,6 +196,18 @@ Navigate to http://localhost:3000/login and sign in with any demo credential.
 1. Click the eye icon on any secret
 2. Token decrypts and displays successfully
 
+### 6. Test Secure User Switching
+
+**As admin1@example.com (org1):**
+
+1. Create a secret named "Org1 Secret"
+2. Click logout in header
+3. Login as admin2@example.com (org2)
+4. Verify "Org1 Secret" is NOT visible (cache cleared)
+5. Create a secret named "Org2 Secret"
+6. Click logout and login back as admin1@example.com
+7. Verify "Org2 Secret" is NOT visible and "Org1 Secret" is back
+
 ## Project Structure
 
 ```
@@ -199,22 +217,34 @@ InterceptRx/
 │   │   ├── graphql/
 │   │   │   ├── permissions.ts  # GraphQL Shield rules
 │   │   │   ├── resolvers/      # Query/Mutation/Subscription resolvers
+│   │   │   │   ├── user.ts     # Login/logout/me mutations
+│   │   │   │   ├── secret.ts   # Secret CRUD with breach counting
+│   │   │   │   ├── audit.ts    # Audit log queries
+│   │   │   │   └── message.ts  # Chat message streaming
 │   │   │   └── type-defs/      # GraphQL schema definitions
 │   │   ├── lib/
 │   │   │   ├── abilities.ts    # CASL permission definitions
+│   │   │   ├── auth.ts         # JWT verification middleware
 │   │   │   ├── encryption.ts   # Envelope encryption + pepper hashing
 │   │   │   └── prisma.ts       # Prisma client
 │   │   ├── services/
-│   │   │   ├── secret.service.ts   # Secret CRUD + breach checking
+│   │   │   ├── secret.service.ts   # Secret CRUD + breach detection
 │   │   │   └── message.service.ts  # Ollama integration + streaming
 │   │   └── prisma/
-│   │       └── schema.prisma   # Database schema
+│   │       ├── schema.prisma   # Database schema (User, Secret, Audit)
+│   │       └── seed.ts         # Database seeding with demo users
 │   └── web/                    # Next.js frontend
 │       ├── app/
 │       │   ├── components/     # React components
+│       │   │   ├── Header.tsx  # Logout button
+│       │   │   └── Sidebar.tsx # Secrets + audit log viewer
 │       │   ├── graphql/        # Apollo queries/mutations
+│       │   ├── login/          # Login page
 │       │   └── page.tsx        # Main chat interface
-│       └── auth.ts             # NextAuth configuration
+│       ├── lib/
+│       │   └── auth-provider.tsx  # JWT auth context + cache clearing
+│       └── clients/
+│           └── apollo-client.ts   # Apollo Client with JWT headers
 ├── compose.yaml                # Docker Compose (PostgreSQL)
 └── package.json                # Workspace root
 ```
@@ -223,10 +253,10 @@ InterceptRx/
 
 - **Backend**: Node.js, Express, Apollo Server, GraphQL Shield, CASL, Prisma
 - **Frontend**: Next.js 16, React, Apollo Client, TailwindCSS
-- **Database**: PostgreSQL
-- **Auth**: NextAuth with credentials provider
+- **Database**: PostgreSQL with Docker
+- **Auth**: JWT with jsonwebtoken, HTTP-only cookies, sessionStorage
 - **LLM**: Ollama (llama3.2)
-- **Security**: AES-256-GCM encryption, SHA-256 hashing
+- **Security**: AES-256-GCM encryption, SHA-256 pepper hashing, comprehensive audit logging
 
 ## Troubleshooting
 
