@@ -2,6 +2,8 @@
 
 A secure chat application demonstrating multi-level authorization with GraphQL, envelope encryption for secrets management, and real-time breach detection. Styled using brand guidelines from BreachRx.com
 
+<img width="3442" height="1850" alt="image" src="https://github.com/user-attachments/assets/fe19c6c1-6af3-43b2-a091-bbacfbe24b9e" />
+
 ## Features
 
 - **Multi-Level Authorization**:
