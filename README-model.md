@@ -117,3 +117,10 @@ model Audit {
 - **Admin**: Can create secrets, view decrypted tokens, see audit logs
 - **Manager**: Can view secret names/metadata and audit logs, but NOT decrypt tokens
 - **Viewer**: No access to secrets sidebar or audit logs, chat only
+
+## Future Features
+
+1. managers should only be able to see audit logs of people they manage (unlike admins who can see all audit logs)
+2. implement sessions, token timeout, and keep alive for auth
+3. implement sliding window for secret breach detection
+4. implement more audit log actions like (VIEW) for secrets
