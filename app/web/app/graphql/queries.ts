@@ -12,6 +12,20 @@ export const ME = gql`
   }
 `;
 
+export const AUDITS = gql`
+  query Audits {
+    audits {
+      id
+      secretId
+      userId
+      orgId
+      action
+      details
+      createdAt
+    }
+  }
+`;
+
 export const GET_SECRETS = gql`
   query GetSecrets {
     secrets {

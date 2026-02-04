@@ -4,6 +4,7 @@ import { PrismaQuery, Subjects, createPrismaAbility } from "@casl/prisma";
 export type Actions = "create" | "read" | "update" | "delete" | "manage";
 export type AppSubjects = Subjects<{
   Secret: { orgId: string; userId: string };
+  Audit: { orgId: string };
 }>;
 
 export type AppAbility = PureAbility<[Actions, AppSubjects], PrismaQuery>;
@@ -22,9 +23,11 @@ export const defineAbilitiesFor = (
     can("read", "Secret", { orgId: user.orgId });
     can("create", "Secret");
     can("update", "Secret", { userId: user.id, orgId: user.orgId });
+    can("read", "Audit", { orgId: user.orgId });
   } else if (user.scopes?.includes("manager")) {
     // manager can only read secrets in their org
     can("read", "Secret", { orgId: user.orgId });
+    can("read", "Audit", { orgId: user.orgId });
   } else if (user.scopes?.includes("viewer")) {
     // viewers can only chat and have no secret visibility
   }

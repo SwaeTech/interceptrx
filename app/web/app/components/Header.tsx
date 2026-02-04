@@ -23,7 +23,7 @@ export default function Header({
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      logout();
+      await logout();
       router.push("/login");
     }
   };

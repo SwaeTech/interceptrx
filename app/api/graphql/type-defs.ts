@@ -2,6 +2,7 @@ import { gql } from "graphql-tag";
 import { messageTypeDefs } from "./type-defs/message";
 import { secretTypeDefs } from "./type-defs/secret";
 import { userTypeDefs } from "./type-defs/user";
+import { auditTypeDefs } from "./type-defs/audit";
 
 // Base schema with empty root types
 const baseTypeDefs = gql`
@@ -10,4 +11,4 @@ const baseTypeDefs = gql`
   type Subscription
 `;
 
-export const typeDefs = [baseTypeDefs, messageTypeDefs, secretTypeDefs, userTypeDefs];
+export const typeDefs = [baseTypeDefs, messageTypeDefs, secretTypeDefs, userTypeDefs, auditTypeDefs];

@@ -2,10 +2,10 @@
 
 import { useAuth } from "../../lib/auth-provider";
 import { useState, useEffect } from "react";
-import { Eye, EyeClosed } from "lucide-react";
+import { Eye, EyeClosed, FileText } from "lucide-react";
 import { useMutation, useQuery, useLazyQuery } from "@apollo/client/react";
 import { CREATE_SECRET } from "../graphql/mutations";
-import { GET_SECRETS, GET_SECRET_WITH_TOKEN } from "../graphql/queries";
+import { GET_SECRETS, GET_SECRET_WITH_TOKEN, AUDITS } from "../graphql/queries";
 
 interface TokenData {
   id: string;
@@ -15,12 +15,24 @@ interface TokenData {
   updatedAt: string;
 }
 
+interface AuditData {
+  id: string;
+  secretId: string;
+  userId: string;
+  orgId: string;
+  action: string;
+  details: string | null;
+  createdAt: string;
+}
+
 export default function Sidebar({ expanded }: { expanded: boolean }) {
   const { user } = useAuth();
   const [secretData, setSecretData] = useState<Record<string, TokenData>>({});
   const [secretName, setSecretName] = useState("");
   const [secretValue, setSecretValue] = useState("");
   const [viewingToken, setViewingToken] = useState<string | null>(null);
+  const [showAudits, setShowAudits] = useState(false);
+
   // Fetch existing secrets
   const { data: secretsData, refetch } = useQuery<{
     secrets: TokenData[];
@@ -35,6 +47,11 @@ export default function Sidebar({ expanded }: { expanded: boolean }) {
   const [getSecretWithToken] = useLazyQuery<{
     secret: TokenData & { token: string };
   }>(GET_SECRET_WITH_TOKEN);
+
+  // Query for audit logs (admin and manager)
+  const { data: auditsData } = useQuery<{
+    audits: AuditData[];
+  }>(AUDITS);
 
   // Load secrets into state when data arrives
   useEffect(() => {
@@ -200,6 +217,100 @@ export default function Sidebar({ expanded }: { expanded: boolean }) {
                   <li className="text-xs text-gray-400 italic">
                     No secrets added yet.
                   </li>
+                )}
+
+                {/* Audit button at bottom */}
+                {expanded && (
+                  <div className="p-4 border-t border-gray-200">
+                    <button
+                      onClick={() => setShowAudits(!showAudits)}
+                      className="w-full flex items-center justify-center gap-2 bg-gray-800 text-white py-2 px-4 rounded-lg hover:bg-gray-700 transition-colors"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>{showAudits ? "Hide Audits" : "View Audits"}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Audit modal/overlay */}
+                {showAudits && (
+                  <div
+                    className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+                    onClick={() => setShowAudits(false)}
+                  >
+                    <div
+                      className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                        <h2 className="text-2xl font-bold text-gray-900">
+                          Audit Logs
+                        </h2>
+                        <button
+                          onClick={() => setShowAudits(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <div className="overflow-y-auto max-h-[calc(80vh-80px)] p-6">
+                        {auditsData && auditsData.audits.length > 0 ? (
+                          <div className="space-y-2">
+                            {auditsData.audits.map((audit) => (
+                              <div
+                                key={audit.id}
+                                className="bg-gray-50 border border-gray-200 rounded-lg p-4"
+                              >
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span
+                                        className={`px-2 py-1 text-xs font-semibold rounded ${
+                                          audit.action === "BREACH"
+                                            ? "bg-red-500 text-white"
+                                            : audit.action === "VIEW"
+                                              ? "bg-blue-500 text-white"
+                                              : "bg-gray-500 text-white"
+                                        }`}
+                                      >
+                                        {audit.action}
+                                      </span>
+                                      <span className="text-xs text-gray-500">
+                                        {new Date(
+                                          audit.createdAt,
+                                        ).toLocaleString()}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-gray-700">
+                                      <span className="font-medium">
+                                        Secret ID:
+                                      </span>{" "}
+                                      {audit.secretId}
+                                    </div>
+                                    <div className="text-sm text-gray-700">
+                                      <span className="font-medium">
+                                        User ID:
+                                      </span>{" "}
+                                      {audit.userId}
+                                    </div>
+                                    {audit.details && (
+                                      <div className="text-sm text-gray-600 mt-1">
+                                        {audit.details}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-center text-gray-500 py-8">
+                            No audit logs found.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 )}
               </ul>
             </div>

@@ -87,15 +87,16 @@ export class SecretService {
       },
     });
 
-    // Increment breach count for each matching secret
+    // Create audit entries for each breach
     const updatedSecretIds: string[] = [];
     for (const secret of matchingSecrets) {
-      await prisma.secret.update({
-        where: { id: secret.id },
+      await prisma.audit.create({
         data: {
-          breachCount: {
-            increment: 1,
-          },
+          secretId: secret.id,
+          userId: secret.userId,
+          orgId: secret.orgId,
+          action: "BREACH",
+          details: "Secret token found in breach database",
         },
       });
       updatedSecretIds.push(secret.id);

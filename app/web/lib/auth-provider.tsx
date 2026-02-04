@@ -16,6 +16,7 @@ interface AuthContextType {
   login: (token: string, user: User) => void;
   logout: () => void;
   isLoading: boolean;
+  setApolloClient: (client: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [apolloClient, setApolloClientState] = useState<any>(null);
 
   useEffect(() => {
     // Check for existing token in sessionStorage
@@ -44,15 +46,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.setItem("user", JSON.stringify(newUser));
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Clear Apollo cache to prevent data leakage between users
+    if (apolloClient) {
+      await apolloClient.clearStore();
+    }
     setToken(null);
     setUser(null);
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("user");
   };
 
+  const setApolloClient = (client: any) => {
+    setApolloClientState(client);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoading }}>
+    <AuthContext.Provider
+      value={{ user, token, login, logout, isLoading, setApolloClient }}
+    >
       {children}
     </AuthContext.Provider>
   );

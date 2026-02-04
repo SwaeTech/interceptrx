@@ -13,6 +13,18 @@ export const secretResolvers = {
       }
       return envelopeDecrypt(parent.encryptedToken, parent.encryptedDek);
     },
+
+    breachCount: async (parent: any) => {
+      // Count audit entries with action 'BREACH' for this secret
+      const count = await prisma.audit.count({
+        where: {
+          secretId: parent.id,
+          action: "BREACH",
+        },
+      });
+      return count;
+    },
+    
     createdAt: (parent: any) => parent.createdAt.toISOString(),
     updatedAt: (parent: any) => parent.updatedAt.toISOString(),
   },

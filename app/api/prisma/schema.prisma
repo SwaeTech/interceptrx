@@ -19,7 +19,6 @@ model Secret {
   encryptedToken String?
   encryptedDek   String?
   blindIndex     String?
-  breachCount    Int      @default(0)
   userId         String
   orgId          String
   createdAt      DateTime @default(now())
