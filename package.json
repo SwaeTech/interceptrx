@@ -1,0 +1,15 @@
+{
+  "name": "interceptrx",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "docker compose up -d && pnpm --parallel --filter \"./app/*\" dev",
+    "start": "docker compose up -d && pnpm --parallel --filter \"./app/*\" start"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.23.0"
+}
